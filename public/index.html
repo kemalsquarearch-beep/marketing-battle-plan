@@ -1,0 +1,138 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Marketing Battle Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#061b44;color:#fff;font:15px "Roboto Condensed",Arial,sans-serif}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;padding:12px}
+button,.btn{font:inherit;border:0;border-radius:8px;padding:11px 16px;background:#fff;color:#061b44;cursor:pointer;text-decoration:none;display:inline-block}
+.go{background:#ff8a00;color:#111}.rec{background:#ffd90f}.ok{background:#148a3c;color:#fff}button:disabled{opacity:.5}
+#scroll{overflow:auto;padding:0 8px}#board{position:relative;margin:auto}#board img{width:100%;display:block}
+textarea.f{position:absolute;border:0;background:transparent;resize:none;overflow:hidden;color:#0a1f4d;font-family:"Roboto Condensed",Arial;font-weight:600;line-height:1.05;margin:0;border-radius:4px}
+textarea.f:focus{outline:2px solid #ff8a00;background:#fff}textarea.r{background:#fff3a6}
+dialog{width:min(480px,94vw);max-height:92vh;border:0;border-radius:14px;padding:20px;color:#061b44}dialog::backdrop{background:#000b}
+dialog h2{margin:0 0 10px}label{display:block;margin:10px 0}input:not([type=checkbox]),select,dialog textarea{display:block;width:100%;padding:10px;font:inherit;font-size:16px;border:1px solid #9ab;border-radius:8px;margin-top:4px}
+dialog img{max-width:100%}dialog button,dialog .btn{margin:4px 4px 0 0;border:1px solid #9ab}.pre{white-space:pre-wrap}[hidden]{display:none!important}
+</style></head><body>
+<div class="bar">
+<label class="btn" style="margin:0">📎 Upload DNA Bisnis Board (PNG/JPG/PDF)<input id="dna" type="file" accept="image/png,image/jpeg,application/pdf" hidden></label>
+<button class="go" id="gen">GENERATE</button><button class="rec" id="reco">Gunakan Rekomendasi</button>
+<button id="keyBtn">⚙️ API Key</button><button id="reset">Kosongkan</button></div>
+<div class="bar" style="padding-top:0"><span id="msg" role="status">Upload file DNA, lalu tekan GENERATE.</span><label style="margin:0">Zoom <input type="range" id="zoom" min="100" max="400" value="100" style="display:inline;width:140px"></label></div>
+<div id="scroll"><div id="board"><img id="tpl" src="template.jpg" alt="Marketing Battle Plan"></div></div>
+<div class="bar"><button class="go" data-dl="png">⬇ Download PNG</button><button class="go" data-dl="pdf">⬇ Download PDF</button></div>
+
+<dialog id="keyD"><h2>Pasang API Key</h2><label>Penyedia AI<select id="prov"><option value="gemini">Google Gemini</option><option value="groq">Groq</option><option value="openai">OpenAI (GPT)</option></select></label>
+<label>API Key<input id="key" type="password" autocomplete="off" placeholder="Paste API key di sini"></label>
+<label>Model (harus bisa membaca gambar)<input id="model" list="models"></label><datalist id="models"></datalist>
+<small>Key disimpan di browser perangkat ini dan dikirim langsung ke penyedia AI.</small><br><button class="go" id="apply">TERAPKAN</button></dialog>
+
+<dialog id="payD"><h2>Pembayaran</h2><p>Biaya: <b id="pFee"></b><br><span class="pre" id="pBank"></span></p><img id="pQris" alt="QRIS">
+<div id="pForm"><p class="pre" id="pDis"></p><label><input type="checkbox" id="agree"> <span class="pre" id="pAgr"></span></label>
+<label class="btn">📁 Upload bukti transfer<input type="file" accept="image/*" class="proof" hidden></label>
+<label class="btn">📷 Buka kamera<input type="file" accept="image/*" capture="environment" class="proof" hidden></label>
+<img id="prev" hidden alt="Pratinjau bukti"><br><button class="go" id="send">Kirim bukti ke admin</button></div>
+<div id="pWait" hidden><p id="pStat"></p><a class="btn ok" id="wa" target="_blank">Buka WhatsApp Admin</a><button id="dlNow" class="go" hidden>Download sekarang</button><button id="again">Upload ulang</button></div>
+<p><button id="admBtn">Setting Admin</button><button onclick="payD.close()">Tutup</button></p></dialog>
+
+<dialog id="setD"><h2>Setting Admin</h2><label>Nomor WA admin<input id="s_wa" inputmode="tel" placeholder="0812..."></label><label>Jumlah biaya<input id="s_fee" placeholder="Rp50.000"></label>
+<label>Nomor rekening (bank, nomor, atas nama)<textarea id="s_bank"></textarea></label><label>Gambar QRIS (JPG)<input type="file" id="s_qris" accept="image/*"></label>
+<label>Teks Disclaimer<textarea id="s_dis" rows="3"></textarea></label><label>Teks Lembar Persetujuan<textarea id="s_agr" rows="3"></textarea></label>
+<label>Password admin<input type="password" id="s_pass"></label><button class="go" id="save">Simpan</button><button onclick="setD.close()">Tutup</button></dialog>
+
+<dialog id="admD"><h2>Verifikasi Pembayaran</h2><p id="aInfo"></p><img id="aImg" alt="Bukti transfer"><label>Password admin<input type="password" id="a_pass"></label><button class="ok" id="yes">PEMBAYARAN DITERIMA</button><button id="no">Tolak</button></dialog>
+<script>
+const $=i=>document.getElementById(i),W=2377,H=1568,F=[],V={};
+const add=(id,x,y,x2,y2,d)=>F.push({id,x,y,w:x2-x,h:y2-y,d});
+add('nama',348,253,752,294,'Nama pengisi');add('bisnis',1106,253,1566,294,'Bisnis/usaha');add('periode',1961,253,2327,294,'Periode pengisian');
+[['market',968,1263,'Pasar'],['category',1314,1633,'Kategori'],['geography',1682,1974,'Area'],['segment',2014,2327,'Segmen spesifik']].forEach(a=>add(a[0],a[1],398,a[2],431,a[3]));
+add('target',52,628,746,666,'Target customer');
+const list=(p,n,x,x2,rows,d)=>rows.slice(0,n).forEach((r,i)=>add(p+(i+1),x,r[0],x2,r[1],d+' #'+(i+1)));
+list('faktor',5,130,747,[[777,803],[809,835],[840,867],[872,898],[903,930]],'Faktor beli customer');
+list('pesaing',4,880,1506,[[628,655],[660,687],[691,719],[723,750]],'Kompetitor/alternatif');
+const r3=[[844,870],[873,899],[902,929]];list('kuat',3,875,1144,r3,'Kompetitor kuat di');list('lemah',3,1242,1509,r3,'Kompetitor lemah di');
+list('kekuatan',6,1656,2326,[[627,660],[669,702],[712,746],[755,789],[798,832],[842,876]],'Kekuatan relevan kita');
+[['win_faktor',581,944,'Faktor beli paling relevan'],['win_gap',1021,1357,'Celah kompetitor'],['win_kekuatan',1437,1804,'Kekuatan yang sesuai'],['peluang',1901,2338,'Peluang utama (prioritas)']].forEach(a=>add(a[0],a[1],1081,a[2],1115,a[3]));
+add('diferensiasi',540,1247,1002,1283,'Pembeda');add('value',1121,1247,1608,1283,'Value proposition');add('positioning',1725,1247,2326,1283,'Positioning');
+add('pesan',555,1444,1122,1504,'Satu pesan utama');add('tagline',1170,1444,1671,1504,'Tagline');
+list('asumsi',3,1797,2335,[[1436,1461],[1467,1493],[1498,1524]],'Asumsi yang perlu diuji');
+
+const store=(k,v)=>{try{if(v===undefined)return JSON.parse(localStorage.getItem(k));localStorage.setItem(k,JSON.stringify(v))}catch(e){return null}};
+Object.assign(V,store('mbpV')||{});
+const cx=document.createElement('canvas').getContext('2d');
+function fit(t,f){let s=23,L;for(;;s--){cx.font=`600 ${s}px "Roboto Condensed",Arial`;L=[];const max=f.w-14;
+for(const p of t.split('\n')){let l='';for(const word of p.split(' ')){const n=l?l+' '+word:word;if(cx.measureText(n).width<=max){l=n;continue}if(l)L.push(l);l='';for(const c of word){if(cx.measureText(l+c).width>max){L.push(l);l=''}l+=c}}L.push(l)}
+if(L.length*s*1.05<=f.h||s<=9)return{s,L}}}
+function draw(f){const k=$('board').clientWidth/W,{s,L}=fit(V[f.id]||'',f);Object.assign(f.el.style,{fontSize:s*k+'px',padding:`${Math.max(0,(f.h-L.length*s*1.05)/2)*k}px ${6*k}px 0`})}
+F.forEach(f=>{const e=f.el=document.createElement('textarea');e.className='f';e.setAttribute('aria-label',f.d);e.value=V[f.id]||'';
+Object.assign(e.style,{left:f.x/W*100+'%',top:f.y/H*100+'%',width:f.w/W*100+'%',height:f.h/H*100+'%'});
+e.oninput=()=>{V[f.id]=e.value;e.classList.remove('r');draw(f);store('mbpV',V)};$('board').append(e)});
+function layout(){$('board').style.width=($('scroll').clientWidth-16)*$('zoom').value/100+'px';F.forEach(draw)}
+$('zoom').oninput=onresize=layout;$('tpl').onload=layout;layout();document.fonts.load('600 20px "Roboto Condensed"').then(layout);
+const say=t=>$('msg').textContent=t;
+
+const DEF={gemini:'gemini-flash-latest',groq:'qwen/qwen3.8-27b',openai:'gpt-6-luna'},BASE={groq:'https://api.groq.com/openai/v1',openai:'https://api.openai.com/v1'},G='https://generativelanguage.googleapis.com/v1beta/';
+let cfg=store('mbpKey');
+function openKey(){const c=cfg||{prov:'gemini',key:'',model:DEF.gemini};$('prov').value=c.prov;$('key').value=c.key;$('model').value=c.model;keyD.showModal()}
+$('prov').onchange=()=>{$('model').value=DEF[$('prov').value];$('models').innerHTML=''};
+$('key').onchange=async()=>{const p=$('prov').value,k=$('key').value.trim();try{const r=await(await fetch(p=='gemini'?G+'models?pageSize=200':BASE[p]+'/models',{headers:p=='gemini'?{'x-goog-api-key':k}:{Authorization:'Bearer '+k}})).json();
+$('models').replaceChildren(...(r.models||r.data||[]).map(m=>new Option((m.name||m.id).replace(/^models\//,''))))}catch(e){}};
+$('apply').onclick=()=>{const key=$('key').value.trim();if(!key)return $('key').focus();cfg={prov:$('prov').value,key,model:$('model').value.trim()||DEF[$('prov').value]};store('mbpKey',cfg);keyD.close()};
+keyD.oncancel=e=>{if(!cfg)e.preventDefault()};$('keyBtn').onclick=openKey;
+
+function shrink(src,w,h,mw=1400,mh=3600){const r=Math.min(1,mw/w,mh/h),c=document.createElement('canvas');c.width=w*r;c.height=h*r;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.85)}
+const loadImg=src=>new Promise((ok,no)=>{const i=new Image;i.onload=()=>ok(i);i.onerror=()=>no(Error('Gambar tidak bisa dibaca'));i.src=src});
+async function imgFile(file,mw,mh){const u=URL.createObjectURL(file),i=await loadImg(u);URL.revokeObjectURL(u);return shrink(i,i.width,i.height,mw,mh)}
+let pages=[];
+$('dna').onchange=async e=>{const file=e.target.files[0];if(!file)return;say('Membaca file…');pages=[];try{
+if(file.type=='application/pdf'){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';const d=await pdfjsLib.getDocument({data:await file.arrayBuffer(),isEvalSupported:false}).promise;
+for(let n=1;n<=Math.min(3,d.numPages);n++){const p=await d.getPage(n),v=p.getViewport({scale:2}),c=document.createElement('canvas');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;pages.push(shrink(c,c.width,c.height))}
+say(`${file.name} siap (${pages.length} halaman, maksimal 3). Tekan GENERATE.`)}else{pages=[await imgFile(file)];say(file.name+' siap. Tekan GENERATE.')}}catch(err){say('Gagal membaca file: '+err.message)}};
+
+async function ask(text){const{prov,key,model}=cfg,g=prov=='gemini';
+const body=g?{contents:[{parts:[{text},...pages.map(p=>({inline_data:{mime_type:'image/jpeg',data:p.split(',')[1]}}))]}],generationConfig:{responseMimeType:'application/json'}}:{model,messages:[{role:'user',content:[{type:'text',text},...pages.map(url=>({type:'image_url',image_url:{url}}))]}],response_format:{type:'json_object'}};
+const r=await fetch(g?`${G}models/${model}:generateContent`:BASE[prov]+'/chat/completions',{method:'POST',headers:{'content-type':'application/json',...(g?{'x-goog-api-key':key}:{Authorization:'Bearer '+key})},body:JSON.stringify(body)}),j=await r.json();
+if(!r.ok)throw Error(j.error?.message||r.status);
+const out=g?j.candidates[0].content.parts.map(p=>p.text||'').join(''):j.choices[0].message.content,t=out.replace(/<think>[\s\S]*?<\/think>/g,'');return JSON.parse(t.slice(t.indexOf('{'),t.lastIndexOf('}')+1))}
+async function run(rec){if(!cfg)return openKey();if(!rec&&!pages.length)return say('Upload file DNA Bisnis Board dulu.');
+if(rec&&!pages.length&&!Object.values(V).some(Boolean))return say('Upload DNA atau isi beberapa kolom dulu agar rekomendasi relevan.');
+if(!rec&&Object.values(V).some(Boolean)&&!confirm('Isi kolom akan diganti dengan hasil dari DNA. Lanjutkan?'))return;
+const spec=F.map(f=>`"${f.id}": ${f.d} (maks ${Math.round(f.w/7*Math.max(1,Math.floor(f.h/17)))} karakter)`).join('\n');
+const rule=rec?`Anda konsultan branding dan bisnis senior. Isi hanya kolom yang masih kosong, selaras dengan dokumen DNA (jika ada) dan isian saat ini: ${JSON.stringify(V)}. nama dan periode selalu "". Buat tajam, spesifik, konsisten dari segmen sampai pesan. Jangan mengarang fakta; klaim yang belum terbukti (mis. "No.1", "tersehat", klaim kesehatan, kelemahan kompetitor) hindari di positioning/tagline dan tulis hal yang perlu diuji di asumsi1-3. Jika tagline di dokumen bertentangan dengan manfaat produk, catat di asumsi.`
+:`Pindahkan isi dokumen DNA Bisnis Board ke kolom. Hanya gunakan informasi yang tertulis (boleh diringkas). Jika tidak ada atau tidak relevan, isi "". Jangan menebak. Panduan: segment=Segmen; target=User Specific; faktor=Gain sebagai kebutuhan customer; pesaing=Kompetitor; lemah=Pain bila merujuk kompetitor; kekuatan=Gain/keunggulan brand; positioning=Positioning; tagline=tagline/hashtag.`;
+$('gen').disabled=$('reco').disabled=true;say('AI sedang bekerja…');try{const o=await ask(`${rule}\nJawab dalam Bahasa Indonesia, hanya JSON datar berisi string, dengan key berikut:\n${spec}`);let n=0;
+F.forEach(f=>{const v=typeof o[f.id]=='string'?o[f.id].trim():'';if(rec){if(V[f.id]||!v)return}else if(!v&&/^(nama|periode)$/.test(f.id))return;V[f.id]=f.el.value=v;f.el.classList.toggle('r',rec);draw(f);if(v)n++});store('mbpV',V);say(`${n} kolom terisi${rec?' dari rekomendasi (kuning). Periksa sebelum dipakai.':'. Sisanya isi manual atau Gunakan Rekomendasi.'}`)}
+catch(e){say('Gagal: '+e.message+'. Cek API key, model, dan kuota.')}$('gen').disabled=$('reco').disabled=false}
+$('gen').onclick=()=>run(false);$('reco').onclick=()=>run(true);
+$('reset').onclick=()=>{if(!confirm('Kosongkan semua kolom? Akses download sebelumnya juga direset.'))return;F.forEach(f=>{V[f.id]=f.el.value='';f.el.classList.remove('r');draw(f)});store('mbpV',V);order=null;store('mbpOrder',null)};
+
+async function download(type){await document.fonts.load('600 20px "Roboto Condensed"');const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.drawImage($('tpl'),0,0,W,H);x.fillStyle='#0a1f4d';x.textBaseline='middle';
+F.forEach(f=>{if(!V[f.id])return;const{s,L}=fit(V[f.id],f),lh=s*1.05;x.font=cx.font;let y=f.y+(f.h-L.length*lh)/2+lh/2;L.forEach(l=>{x.fillText(l,f.x+7,y);y+=lh})});
+if(type=='pdf'){const d=new jspdf.jsPDF({orientation:'l',unit:'mm',format:'a3'}),h=420*H/W;d.addImage(c.toDataURL('image/jpeg',.95),'JPEG',0,(297-h)/2,420,h);d.save('marketing-battle-plan.pdf')}
+else c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='marketing-battle-plan.png';a.click()})}
+
+async function api(path,data){const r=await fetch('/api/'+path,data?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)}:{cache:'no-store'}),j=await r.json().catch(()=>({error:'Server belum aktif (deploy ke Netlify)'}));if(!r.ok||j.error)throw Error(j.error||r.status);return j}
+let order=store('mbpOrder'),S={},want='png',proof='',timer;
+async function loadSet(){S=await api('settings');$('pFee').textContent=S.fee||'-';$('pBank').textContent=S.bank||'';$('pQris').hidden=!S.qris;if(S.qris)$('pQris').src=S.qris;$('pDis').textContent=S.dis||'';$('pAgr').textContent=S.agr||'Saya menyetujui syarat dan ketentuan.'}
+function view(status){$('pForm').hidden=!!order;$('pWait').hidden=!order;if(!order)return;const ok=status=='diterima';
+$('pStat').textContent=ok?'Pembayaran diterima. Silakan download.':status=='ditolak'?'Pembayaran ditolak. Upload ulang bukti yang benar.':'Bukti terunggah. Kirim pesan WhatsApp, lalu tunggu konfirmasi di halaman ini.';
+$('dlNow').hidden=!ok;$('wa').hidden=ok;$('again').hidden=ok;
+let n=(S.wa||'').replace(/\D/g,'').replace(/^0/,'62');const o=location.origin;
+$('wa').href=`https://wa.me/${n}?text=`+encodeURIComponent(`Halo Admin, saya ${V.nama||'pengguna'} sudah transfer ${S.fee||''} untuk Marketing Battle Plan.\nBukti TF: ${o}/api/proof/${order}.jpg\nKonfirmasi: ${o}/?admin=${order}`)}
+async function check(){if(!order)return'';const{status}=await api('status/'+order);view(status);return status}
+document.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{want=b.dataset.dl;try{await loadSet();let s=order?await check():'';if(s=='diterima')return download(want);if(s=='tidak ada')order=null;view(s);payD.showModal()}catch(e){view();payD.showModal();say(e.message);alert(e.message)}
+clearInterval(timer);timer=setInterval(()=>{if(!payD.open)return clearInterval(timer);check().catch(()=>{})},5000)});
+document.querySelectorAll('.proof').forEach(i=>i.onchange=async()=>{if(!i.files[0])return;try{proof=await imgFile(i.files[0],1200,1800);$('prev').src=proof;$('prev').hidden=false}catch(e){alert(e.message)}});
+$('send').onclick=async()=>{if(!$('agree').checked)return alert('Centang Lembar Persetujuan dulu.');if(!proof)return alert('Upload atau foto bukti transfer dulu.');if(!S.wa)return alert('Nomor WA admin belum diatur.');$('send').disabled=true;
+try{order=(await api('order',{proof,name:V.nama})).id;store('mbpOrder',order);view('menunggu');window.open($('wa').href,'_blank')}catch(e){alert(e.message)}$('send').disabled=false};
+$('again').onclick=()=>{order=null;proof='';$('prev').hidden=true;store('mbpOrder',null);view()};$('dlNow').onclick=()=>download(want);
+let qris='';
+$('admBtn').onclick=()=>{['wa','fee','bank','dis','agr'].forEach(k=>$('s_'+k).value=S[k]||'');qris=S.qris||'';setD.showModal()};
+$('s_qris').onchange=async e=>{if(e.target.files[0])qris=await imgFile(e.target.files[0],1000,1400)};
+$('save').onclick=async()=>{const settings={qris};['wa','fee','bank','dis','agr'].forEach(k=>settings[k]=$('s_'+k).value.trim());try{await api('settings',{pass:$('s_pass').value,settings});await loadSet();view();$('s_pass').value='';setD.close()}catch(e){alert(e.message)}};
+
+const adm=new URLSearchParams(location.search).get('admin');
+if(adm){$('aImg').src=`/api/proof/${encodeURIComponent(adm)}.jpg`;admD.showModal();api('status/'+encodeURIComponent(adm)).then(o=>$('aInfo').textContent=`${o.name||'Pengguna'} · status: ${o.status}`).catch(e=>$('aInfo').textContent=e.message);
+const act=async ok=>{try{await api('approve',{pass:$('a_pass').value,id:adm,ok});$('aInfo').textContent=ok?'Pembayaran diterima. Pengguna sudah bisa download.':'Pembayaran ditolak.'}catch(e){alert(e.message)}};$('yes').onclick=()=>act(true);$('no').onclick=()=>act(false)}
+else if(!cfg)openKey();
+</script></body></html>
